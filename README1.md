@@ -361,3 +361,40 @@ public function store(Request $request)
     return redirect($slug)->withMessage("Komentarz został opublikowany.");
 }
 ```
+## Ścieżki dostępu
+Aktualizacja pliku **routes/web.php** związana z wypełnieniem sposobów przekierowania/wykorzystania odpowiednich metod w odpowiednich kontrolerach. 
+==Z pewnością będzie należało je przeglądnąć poniweaż nie podobają mi się.==
+
+Wygląd pliku po aktualizacji:
+```php
+Route::get('/', [App\Http\Controller\PostController::class, 'index'])->name('home');
+Route::get('/home', ['as'=>'home', 'uses'=>'PostController@index']);
+
+Route::get('/logout', 'UserController@logout');
+
+Route::prefix('auth')->group(function () {
+    Auth::routes();
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('new-post', 'PostController@create');
+    Route::post('new-post', 'PostController@store');
+    Route::get('edit/{slug}', 'PostController@edit');
+    Route::post('update', 'PostController@update');
+    Route::get('delete/{id}', 'PostController@destroy');
+    Route::get('my-all-post', 'UserController@user_posts_all');
+    Route::get('my-drafts', 'UserController@user_posts_draft');
+    Route::post('comment/add', 'CommentController@store');
+    Route::post('comment/delete/{id}', 'CommentController@destroy');
+});
+
+Route::get('user/{id}', 'UserController@profile')->where('id', '[0-9]+');
+Route::get('user/{id}/posts', 'UserController@user_posts')->where('id', '[0-9]+');
+
+Route::get('/{slug}', ['as'=>'post', 'uses'=>'PostController@show'])->where('slug', '[A-Za-z0-9-_]+');
+```
+
+# Front-end
+Bazując na szablonach Blade będziemy usupełniać i tworzyć odpowiednie widoki dla odpowiednich metod kontrolerów.
+
+
