@@ -81,3 +81,283 @@ Dodajemy jedną kolumnę do tabeli mówiącą o rolu użytkownika:
 ```php
             $table->enum('role', ['admin', 'author', 'subcriber'])->default('author');
 ```
+## Uzupełnianie modeli 
+W uzupełnianiu modeli głównie zależy nam na wypisaniu co można zmieniać w tabelach oraz wypisać relacje pomiędzy daną tabelą a innymi tabelami.
+
+### Post model
+Uzupełniamy w relacje oraz w informacje które komulny nie można lub można zmieniać
+```php
+    //informacja które kolumny są zabezpieczone przed modyfikowaniem
+    protected $guarded = [];
+
+    //post może posiadać wiele komentarzy
+    //metoda zwraca komentarze przynależne do danego postu
+    public function comments()
+    {
+        return $this->hasMany('App\Models\Comment', 'on_post');
+    }
+
+    //zwraca odniesienie do tablicy 'users' mówiącą o autorze postu
+    public function author()
+    {
+        return $this->belongsTo('App\Models\User', 'author_id');
+    }
+```
+
+### Comment model
+Podobnie jak model **Post** uzupełniamy w relacje oraz informację, które kolumny są zabezpieczone przed zmianą
+```php
+    //zabezpieczone przed zmianą kolumny => w tym wypadku żadna
+    protected $guarded = [];
+
+    //odniesienie do autora komentarza
+    public function author()
+    {
+        return $this->belongsTo('App\Models\User', 'from_user');
+    }
+
+    //odnalezienie postu do którego należy komentarz
+    public function post()
+    {
+        return $this->belongsTo('App\Models\Post', 'on_post');
+    }
+```
+
+### User model
+Model **User** uzupełniamy o nowe metody pozwalające nam wczytać posty i komentarze danego użytkownika oraz sprawdzić czy może publikować posty oraz czy jest adminem
+```php
+    //zwracamy posty danego użytkownika - może być ich wiele
+    public function posts(){
+        return this->hanMany('App\Models\Post', 'author_id');
+    }
+
+    //zwracamy komentarze danego użytkownika - może ich być wiele
+    public function comments(){
+        return $this->hasMany('App\Models\Comment', 'from_user');
+    }
+
+    //sprawdzamy czy dany użytkownik może pisać posty
+    public function can_post(){
+        $role = $this->role;
+        if ($role == 'author' || $role == 'admin'){
+            return true;
+        }
+        return false;
+    }
+
+    //sprawdzamy czy użytkownik jest adminem
+    public function is_admin(){
+        $role = $this->role;
+        if ($role == 'admin'){
+            return true;
+        }
+        return false;
+    }
+```
+## uzupełnianie kontrolerów
+Dzięki skorzystaniu z przełącznika `-cr` podczas tworzenia modeli w kontrolerach mamy już podstawowe metody typu: `index`, `create`, `store`, `edit`, `show`, `destroy`.
+W przypadku kiedy korzystamy tylko z Laravela i widoków Blade będziemy korzystać z wszystkich tych metod. W przypadku kiedy będziemy korzystać z Laravel i ReactJS, niektóre z tych metod nie będą wykorzystywane.
+
+### PostController
+Pełna wersja:
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Post;
+use Illuminate\Http\Request;
+//dodatkowe klasy wykorzstane w tej klasie
+use App\Requests\PostFormRequest;
+use Illuminate\Support\Str;
+
+class PostController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        //wczytanie 5-ciu najnowszysch OPUBLIKOWANYCH postów
+        $posts = Post::where('active', 1)->orderedBy('created_at', 'desc')->paginate(5);
+        //nazwa dla tytułu
+        $title = "Ostatnie posty";
+        //wyświetlenie widoku home wraz z ostatnimi postami i odpowiednim tytułem
+        //zamiast 'withPosts($posts)' można zastosować konstrukcję 'with('posts', $posts)'
+        //i podobnie zamiast 'withTitle($title)' można użyć 'with('title', $title)`
+        return view('home')->withPosts($posts)->withTitle($title);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create(Request $request)
+    {
+        //metoda ta ma na celu sprawdzenie czy użytkownik może wpisać post i zwrócenie odpowiedniego widoku z formularzem dla wpisania postu lub powrotem do widoku podstawowego 'home' z wyświetleniem błędu
+        if($request->user()->can_post()){
+            return view('posts.create');
+        } else {
+            return redirect('/')->withErrors('Nie masz uprawnień do pisania postów.');
+        }
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(PostFormRequest $request)
+    {
+        //metoda ma na celu wprowadzenie postu do bazy danych po wcześniejszym sprawdzeniu poprawności wprowadzonych danych przez klasę PostFormRequest
+        $post = new Post();
+        $post->title = $request->get('title');
+        $post->body = $request->get('body');
+        $post->slug = Str::slug($post->title);
+
+        //sprawdzenie czy wprowadzony tytuł już czasem nie istnieje
+        $duplicate = Post::where('slug', $post->slug)->first();
+        if($duplicate){
+            return redirect('new-post')->withErrors('Tytuł już istnieje w bazie danych')->withInput();
+        }
+
+        //przypisanie autora do tablicy $post
+        $post->author_id = $request->user()->id;
+
+        //sprawdzenie czy post jest do publikacji czy tylko zapisany
+        if($request->has('save')){
+            $post->active = 0;
+            $message = "Post został zapisany.";
+        } else {
+            $post->active = 1;
+            $message = "Post został opublikowany";
+        }
+
+        //wprowadzenie do bazy
+        $post->save();
+
+        return redirect('edit/'. $post->slug)->with('message', $message);
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  \App\Models\Post  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function show($slug)
+    {
+        //wyświetlenie postu o danym $slug
+        $post = Post::where('slug', $slug)->first();
+
+        if(!$post){
+            return redirect('/')->withErrors("Nie ma takiego postu.");
+        }
+
+        //pobranie komentarzy
+        $comments = $post->comments();
+
+        return view('posts.show')->withPost($post)->withComments($comments);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  \App\Models\Post  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Request $request, $slug)
+    {
+        //sprawdzenie czy post istnieje, czy użytkownik ma prawa do edycji postu oraz wyświetlenie widoku do edycji postu
+        $post = Post::where('slug', $slug)->first();
+
+        if($post && ($request->user()->id == $post->author_id || $request->user()->is_admin())){
+            return view('posts.edit')->with('post', $post);
+        }
+        return redirect('/')->withErrors("Nie masz uprawnień do edycji tego postu.");
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Post  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Post $post)
+    {
+        //wysłanie zaktualizowanych danych do bazy
+        $post_id = $request->input('post_id');
+        $post = Post::find($post_id);
+        if($post && ($post->author_id == $request->user()->id || $request->user()->is_admin())){
+            $title = $request->input('title');
+            $slug = Str::slug($title);
+
+            //czy jest duplikatem
+            $duplicate = Post::where('slug', $slug)->first();
+            if($duplicate){
+                if($duplicate->id != $post_id){
+                    return redirect('edit/'.$post->slug)->withErrors("Taki tytuł już ma inny post");
+                } else {
+                    $post->slug = $slug;
+                }
+            }
+
+            $post->title = $title;
+            $post->body = $request->input('body');
+
+            if($request->has('save')){
+                $post->active = 0;
+                $message = "Post został zapisany.";
+                $landing = 'edit/.'.$post->slug;
+            } else {
+                $post->active = 1;
+                $message = "Post został opublikowany.";
+                $landing = $post->slug;
+            }
+            $post->save();
+            return redirect($landing)->withMessage($message);
+        } else {
+            return redirect('/')->withErrors("Nie masz uprawnień do edytowania postu.");
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  \App\Models\Post  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Request $request, $id, Post $post)
+    {
+        //usuwanie postu z bazy
+        $post = Post::find($id);
+        if($post && ($post->author_id == $request->user()->id || $request->user()->is_admin())){
+            $post->delete();
+            $message = "Post został usunięty.";
+            return redirect('/')->withMessage($message);
+        }
+        return redirect('/')->withErrors("Nie masz uprawnień do usunięcia postu.");
+    }
+}
+```
+### CommentController
+Poniżej tylko fragment kontrolera dodawania komentarzy. Należy uzupełnić resztę metod na podstawie kontrolera do publikowania postów.
+```php
+public function store(Request $request)
+{
+    //zapisanie komentarza do bazy wraz z odpowiednimi odnośnikami do autora oraz do postu
+    $input['from_user'] = $request->user()->id;
+    $input['on_post'] = $request->input('on_post');
+    $input['body'] = $request->input('body');
+
+    $slug = $request->input('slug');
+
+    Comments::create($input);
+    return redirect($slug)->withMessage("Komentarz został opublikowany.");
+}
+```
