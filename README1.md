@@ -52,13 +52,32 @@ Zarówno migracja jak i model są zaimplementowane odrazu przy tworzeniu projekt
 Do istniejących pól `$table` dopisujemy informacje o nowych kolumnach tak, żeby całość wyglądała:
 ```php
 Schema::create('posts', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('author_id');
-            $table->foreign('author_id')->references('id')->on('users')->onDelete('cascade');
-            $table->string('title')->unidue();
-            $table->text('body');
-            $table->string('slug')->unique();
-            $table->boolean('active');
-            $table->timestamps();
-        });
+    $table->id();
+    $table->unsignedBigInteger('author_id');
+    $table->foreign('author_id')->references('id')->on('users')->onDelete('cascade');
+    $table->string('title')->unidue();
+    $table->text('body');
+    $table->string('slug')->unique();
+    $table->boolean('active');
+    $table->timestamps();
+});
+```
+### Comments
+Podobnie jak w przypadku **Posts** uzupełniamy informacje o brakujące kolumny:
+```php
+Schema::create('comments', function (Blueprint $table) {
+    $table->id();
+    $table->unsignedBigInteger('on_post');
+    $table->unsignedBigInteger('from_user');
+    $table->foreign('on_post')->references('id')->on('posts')->onDelete('cascade');
+    $table->foreign('from_user')->references('id')->on('users')->onDelete('cascade');
+    $table->text('body');
+    $table->timestamps();
+});
+```
+
+### Users
+Dodajemy jedną kolumnę do tabeli mówiącą o rolu użytkownika:
+```php
+            $table->enum('role', ['admin', 'author', 'subcriber'])->default('author');
 ```
