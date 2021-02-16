@@ -398,3 +398,7 @@ Route::get('/{slug}', ['as'=>'post', 'uses'=>'PostController@show'])->where('slu
 Bazując na szablonach Blade będziemy usupełniać i tworzyć odpowiednie widoki dla odpowiednich metod kontrolerów.
 
 
+# UWAGI
+1. dokończyć kontrolery CommentController i UserController
+2. uzupełnić widoki
+3. sprawdzić klasy dla elementu `nav` bo za cholerę nie działa jak należy
