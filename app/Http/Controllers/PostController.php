@@ -18,7 +18,7 @@ class PostController extends Controller
     public function index()
     {
         //wczytanie 5-ciu najnowszysch OPUBLIKOWANYCH postów
-        $posts = Post::where('active', 1)->orderedBy('created_at', 'desc')->paginate(5);
+        $posts = Post::where('active', 1)->orderBy('created_at', 'desc')->paginate(5);
         //nazwa dla tytułu
         $title = "Ostatnie posty";
         //wyświetlenie widoku home wraz z ostatnimi postami i odpowiednim tytułem
