@@ -79,7 +79,7 @@
         @endforeach
       @else
         <div class="list-group-item">
-          <p>Nie skomentowałeś jeszcze rzadnego postu</p>
+          <p>Nie skomentowałeś jeszcze żadnego postu</p>
         </div>
       @endif
     </div>
