@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use Illuminate\Http\Request;
 //dodatkowe klasy wykorzstane w tej klasie
-use App\Requests\PostFormRequest;
+use App\Http\Requests\PostFormRequest;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
