@@ -21,7 +21,7 @@
   <div>
     <h2>Leave a comment</h2>
   </div>
-  @if (Auth::guest)
+  @if (Auth::guest())
     <p>Login to comment</p>
   @else
     <div class="panel-body">
@@ -55,8 +55,7 @@
         </ul>
       @endif
     </div>
-  @else 
-  404 error 
+ 
   @endif
 
 @endsection
