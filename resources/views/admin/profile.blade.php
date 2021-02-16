@@ -6,7 +6,7 @@
   <div>
     <ul class="list-group">
       <li class="list-group-item">
-        Joined on {{$user->created_at->fromat('M d,Y \a\t h:i a')}}
+        Joined on {{$user->created_at->format('M d,Y \a\t h:i a')}}
       </li>
       <li class="list-group-item panel-body">
         <table class="table-padding">
@@ -35,8 +35,8 @@
           </tr>
           <tr>
             <td>Posts in Draft</td>
-            <td>{{$posts_draft_count}}</td>
-            @if($author && $posts_draft_count)
+            <td>{{$posts_drafts_count}}</td>
+            @if($author && $posts_drafts_count)
               <td><a href="{{ url('my-drafts')}}">Show All</a></td>
             @endif 
           </tr>
@@ -56,7 +56,7 @@
         @foreach ($latest_posts as $latest_post)
           <p>
             <strong><a href="{{ url('/'.$latest_post->slug) }}">{{ $latest_post->title }}</a></strong>
-            <span class="well-sm">On {{ $latest_post->created_at->created_at->format('M d,Y \a\t h:i a') }}</span>
+            <span class="well-sm">On {{ $latest_post->created_at->format('M d,Y \a\t h:i a') }}</span>
           </p>
         @endforeach
       @else

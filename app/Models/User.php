@@ -43,7 +43,7 @@ class User extends Authenticatable
 
     //zwracamy posty danego użytkownika - może być ich wiele
     public function posts(){
-        return this->hanMany('App\Models\Post', 'author_id');
+        return $this->hasMany('App\Models\Post', 'author_id');
     }
 
     //zwracamy komentarze danego użytkownika - może ich być wiele
